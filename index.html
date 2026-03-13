@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruota della Fortuna</title>
+    <style>
+        body {
+            background: radial-gradient(circle, #2b0054, #0a001a);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 3.5rem;
+            text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 40px #ff007f;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .wheel-container {
+            position: relative;
+            width: 450px;
+            height: 450px;
+        }
+        /* Il puntatore in alto */
+        .pointer {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-top: 50px solid #ffd700;
+            z-index: 10;
+            filter: drop-shadow(0 0 15px #ffd700);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff inset;
+            border: 8px solid #ffd700;
+            /* La transizione è il segreto del Crazy Time: lunga e decrescente */
+            transition: transform 7s cubic-bezier(0.15, 0.9, 0.15, 1); 
+        }
+        .spin-btn {
+            margin-top: 50px;
+            padding: 20px 60px;
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, #ff007f, #ffaa00);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 20px #ff007f;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .spin-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 10px #ff007f;
+        }
+        .spin-btn:disabled {
+            background: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 30px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 15px #ffd700;
+            min-height: 50px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Crazy Wheel</h1>
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="500" height="500"></canvas>
+    </div>
+    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">Gira!</button>
+    <div id="result"></div>
+
+    <script>
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const resultDiv = document.getElementById("result");
+        const spinBtn = document.getElementById("spinBtn");
+
+        // Ordine dei premi sulla ruota
+        const prizes = ["Kit Gym-Bro", "Vacanza Teheran", "Uno Speaker", "Buono Boggi", "Margot Robbie"];
+        // Colori in stile casinò
+        const colors = ["#ff007f", "#00e5ff", "#ffaa00", "#8a2be2", "#39ff14"];
+
+        const numSlices = prizes.length;
+        const sliceAngle = (2 * Math.PI) / numSlices;
+
+        // Disegna la ruota
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2;
+
+            for (let i = 0; i < numSlices; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#fff";
+                ctx.stroke();
+
+                // Disegna il testo
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate((i + 0.5) * sliceAngle);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "white";
+                ctx.font = "bold 26px 'Segoe UI', Arial";
+                ctx.shadowColor = "rgba(0,0,0,0.8)";
+                ctx.shadowBlur = 8;
+                // Posiziona il testo verso il bordo
+                ctx.fillText(prizes[i], radius - 20, 10);
+                ctx.restore();
+            }
+        }
+
+        drawWheel();
+
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            spinBtn.disabled = true;
+            resultDiv.style.opacity = 0;
+
+            // --- IL TRUCCO INIZIA QUI ---
+            // "Kit Gym-Bro" è l'indice 0. Il suo centro si trova a 36 gradi.
+            // Il puntatore è in alto (a 270 gradi). 
+            // Per far allineare 36 gradi con 270 gradi, servono 234 gradi di rotazione base.
+            const baseTarget = 234; 
+            
+            // Aggiungiamo 10 giri completi (3600 gradi) per un'animazione lunghissima e drammatica
+            const extraSpins = 3600; 
+            
+            // Aggiungiamo un leggero scarto casuale (+/- 20 gradi) per realismo
+            // così la freccia non cade esattamente al centro perfetto millimetrico ogni volta.
+            const randomOffset = Math.floor(Math.random() * 40) - 20; 
+
+            // Calcola la rotazione finale tenendo conto di dove si trova la ruota adesso
+            const finalRotation = currentRotation + extraSpins + baseTarget + randomOffset - (currentRotation % 360);
+
+            // Applica la rotazione tramite CSS
+            canvas.style.transform = `rotate(${finalRotation}deg)`;
+            currentRotation = finalRotation;
+
+            // Attendi la fine dell'animazione CSS (7 secondi)
+            setTimeout(() => {
+                resultDiv.innerText = "🏆 Hai vinto: " + prizes[0] + "! 🏆";
+                resultDiv.style.opacity = 1;
+                isSpinning = false;
+                spinBtn.disabled = false;
+            }, 7000); 
+        }
+    </script>
+</body>
+</html>
