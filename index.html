@@ -3,185 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ruota della Fortuna</title>
+    <title>Ruota della Fortuna - Slot Edition Deluxe</title>
     <style>
-        body {
-            background: radial-gradient(circle, #2b0054, #0a001a);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        #ui-overlay {
+            position: absolute; top: 20px; right: 20px;
+            color: white; background: rgba(0,0,0,0.8);
+            padding: 15px 25px; border-radius: 10px; border: 2px solid #FFD700;
+            text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
         }
-        h1 {
-            font-size: 3.5rem;
-            text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 40px #ff007f;
-            margin-bottom: 30px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        #ui-overlay .label { font-size: 14px; opacity: 0.8; }
+        #ui-overlay .value { font-size: 24px; font-weight: bold; color: #FFD700; }
+        #spin-button {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            padding: 20px 60px; font-size: 28px; font-weight: 900;
+            text-transform: uppercase; color: white;
+            background: linear-gradient(135deg, #FFD700, #DAA520, #FFD700);
+            border: 4px solid #fff; border-radius: 60px;
+            cursor: pointer; box-shadow: 0 10px 20px rgba(255, 215, 0, 0.7), 0 -5px 0 #b30059 inset;
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-        .wheel-container {
-            position: relative;
-            width: 450px;
-            height: 450px;
+        #spin-button:active { transform: translateX(-50%) translateY(4px); box-shadow: 0 5px 10px rgba(255, 215, 0, 0.7), 0 -2px 0 #b30059 inset; }
+        #spin-button:disabled { background: #555; color: #888; border-color: #777; box-shadow: none; cursor: not-allowed; }
+        #result-display {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.8s; z-index: 100;
         }
-        /* Il puntatore in alto */
-        .pointer {
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 25px solid transparent;
-            border-right: 25px solid transparent;
-            border-top: 50px solid #ffd700;
-            z-index: 10;
-            filter: drop-shadow(0 0 15px #ffd700);
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff inset;
-            border: 8px solid #ffd700;
-            /* La transizione è il segreto del Crazy Time: lunga e decrescente */
-            transition: transform 7s cubic-bezier(0.15, 0.9, 0.15, 1); 
-        }
-        .spin-btn {
-            margin-top: 50px;
-            padding: 20px 60px;
-            font-size: 2rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            background: linear-gradient(45deg, #ff007f, #ffaa00);
-            border: none;
-            border-radius: 50px;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 0 20px #ff007f;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .spin-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 0 10px #ff007f;
-        }
-        .spin-btn:disabled {
-            background: #555;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-        #result {
-            margin-top: 30px;
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 0 0 15px #ffd700;
-            min-height: 50px;
-            text-transform: uppercase;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
+        #result-display.show { opacity: 1; pointer-events: auto; }
+        #result { font-size: 4rem; color: #ffd700; text-shadow: 0 0 30px #ffd700; text-transform: uppercase; text-align: center; font-weight: 900; }
     </style>
 </head>
 <body>
-
-    <h1>Crazy Wheel</h1>
-    <div class="wheel-container">
-        <div class="pointer"></div>
-        <canvas id="wheel" width="500" height="500"></canvas>
+    <div id="canvas-container"></div>
+    <div id="ui-overlay">
+        <div class="label">Credits</div>
+        <div class="value" id="credits-value">11,000</div>
     </div>
-    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">Gira!</button>
-    <div id="result"></div>
+    <button id="spin-button" onclick="handleSpin()">Gira!</button>
+    <div id="result-display">
+        <div id="result">🏆 Hai vinto: Cena gourmet per due! 🏆</div>
+    </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <script>
-        const canvas = document.getElementById("wheel");
-        const ctx = canvas.getContext("2d");
-        const resultDiv = document.getElementById("result");
-        const spinBtn = document.getElementById("spinBtn");
+        // --- IMPOSTAZIONI ---
+        const premios = ["Kit gym-bro", "vacanza a Teheran", "Uno speaker portatile", "Cena gourmet per due", "Buono Boggi"];
+        const coloriPremo = ["#00BFFF", "#FF4500", "#FFD700", "#800080", "#32CD32"];
+        
+        let scene, camera, renderer, controls;
+        let machineGroup, wheelDisc, spinButtonMesh;
+        let isSpinning = false;
+        let targetAngle = 0;
+        let spinSpeed = 0;
+        let credits = 11000;
+        const creditsValueDisplay = document.getElementById("credits-value");
+        const spinButton = document.getElementById("spin-button");
+        const resultDisplay = document.getElementById("result-display");
+        const resultText = document.getElementById("result");
 
-        // Ordine dei premi sulla ruota
-        const prizes = ["Kit Gym-Bro", "Vacanza Teheran", "Uno Speaker", "Buono Boggi", "Margot Robbie"];
-        // Colori in stile casinò
-        const colors = ["#ff007f", "#00e5ff", "#ffaa00", "#8a2be2", "#39ff14"];
+        initScene();
+        buildMachine();
+        animate();
 
-        const numSlices = prizes.length;
-        const sliceAngle = (2 * Math.PI) / numSlices;
+        // 1. INIZIALIZZAZIONE DELLA SCENA E TELECAMERA
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
 
-        // Disegna la ruota
-        function drawWheel() {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = canvas.width / 2;
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.5, 4);
 
-            for (let i = 0; i < numSlices; i++) {
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
-                ctx.fillStyle = colors[i];
-                ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = "#fff";
-                ctx.stroke();
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById("canvas-container").appendChild(renderer.domElement);
 
-                // Disegna il testo
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.rotate((i + 0.5) * sliceAngle);
-                ctx.textAlign = "right";
-                ctx.fillStyle = "white";
-                ctx.font = "bold 26px 'Segoe UI', Arial";
-                ctx.shadowColor = "rgba(0,0,0,0.8)";
-                ctx.shadowBlur = 8;
-                // Posiziona il testo verso il bordo
-                ctx.fillText(prizes[i], radius - 20, 10);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 1.2, 0);
+            controls.update();
+
+            // Luci
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const mainLight = new THREE.DirectionalLight(0xFFD700, 1.5);
+            mainLight.position.set(2, 5, 2);
+            scene.add(mainLight);
+            
+            // Sfondo casinò sfocato (semplice piano)
+            const backdropGeometry = new THREE.PlaneGeometry(20, 10);
+            const backdropMaterial = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 5 });
+            const backdrop = new THREE.Mesh(backdropGeometry, backdropMaterial);
+            backdrop.position.set(0, 5, -5);
+            scene.add(backdrop);
+        }
+
+        // 2. COSTRUZIONE DELLA MACCHINA (Tutto in Codice)
+        function buildMachine() {
+            machineGroup = new THREE.Group();
+            scene.add(machineGroup);
+
+            const goldenMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700, shininess: 100, metalness: 0.8 });
+            
+            // Corpo principale (base dorata)
+            const mainBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3, 0.6), goldenMaterial);
+            mainBody.position.y = 1.3;
+            machineGroup.add(mainBody);
+
+            // Pannello frontale (texture papiro/egizia simulata con semplice gradiente)
+            const frontPanelMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xD2B48C,
+                map: new THREE.CanvasTexture(generatePapyrusTexture())
+            });
+            const frontPanel = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.6, 0.02), frontPanelMaterial);
+            frontPanel.position.y = 1.3; frontPanel.position.z = 0.31;
+            machineGroup.add(frontPanel);
+
+            // Intestazione "RUOTA DELLA FORTUNA"
+            buildHeader();
+            
+            // La Ruota (come disco 3D)
+            const wheelGeometry = new THREE.CylinderGeometry(1, 1, 0.1, 64);
+            const wheelMaterial = new THREE.MeshPhongMaterial({ map: generateWheelTexture() });
+            wheelDisc = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheelDisc.rotation.x = Math.PI / 2; // Orienta verticalmente
+            wheelDisc.position.set(0, 1.4, 0.36); // Posizione frontale
+            machineGroup.add(wheelDisc);
+
+            // Luci decorative (semplici cubi/cilindri colorati)
+            addDecorativeLights();
+
+            // Pulsantiera inferiore
+            buildButtonPanel();
+        }
+
+        // Funzione per generare texture papiro egizia simulata
+        function generatePapyrusTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+            gradient.addColorStop(0, '#D2B48C'); gradient.addColorStop(0.5, '#F5DEB3'); gradient.addColorStop(1, '#D2B48C');
+            ctx.fillStyle = gradient; ctx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 50; i++) { ctx.fillStyle = `rgba(139, 69, 19, ${Math.random()*0.1})`; ctx.fillRect(0, Math.random()*512, 512, Math.random()*5); }
+            return canvas;
+        }
+
+        // Generazione TEXTURE DETTAGLIATA della ruota
+        function generateWheelTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 2048; canvas.height = 2048; const ctx = canvas.getContext('2d');
+            
+            // Disegna i 5 segmenti colorati
+            const segmentAngle = (2 * Math.PI) / premios.length;
+            for (let i = 0; i < premios.length; i++) {
+                const startAngle = i * segmentAngle;
+                const endAngle = (i + 1) * segmentAngle;
+                
+                ctx.beginPath(); ctx.moveTo(1024, 1024);
+                ctx.arc(1024, 1024, 1024, startAngle, endAngle); ctx.closePath();
+                ctx.fillStyle = coloriPremo[i]; ctx.fill();
+                
+                // Bordo segmento
+                ctx.lineWidth = 10; ctx.strokeStyle = "#fff"; ctx.stroke();
+                
+                // Testo del premio (in italiano) e icone semplificate
+                ctx.save(); ctx.translate(1024, 1024); ctx.rotate(startAngle + segmentAngle / 2); ctx.textAlign = "right"; ctx.fillStyle = "white"; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 10;
+                
+                // Testo principale
+                ctx.font = "bold 90px 'Segoe UI'";
+                ctx.fillText(premios[i].toUpperCase(), 980, 20);
+                
+                // Icone semplificate (testuali o forme)
+                ctx.font = "80px Arial";
+                const icons = ["💪 Shaker", "✈️ Aeroporto", "🔊 Bluetooth", "🍽️ Tavola", "🏷️ Boggi"];
+                ctx.fillText(icons[i], 980, 110);
                 ctx.restore();
+            }
+
+            // Centro ruota dorato con "1"
+            ctx.beginPath(); ctx.arc(1024, 1024, 250, 0, 2 * Math.PI); ctx.fillStyle = "#FFD700"; ctx.fill(); ctx.lineWidth = 15; ctx.strokeStyle = "#fff"; ctx.stroke();
+            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 350px 'Segoe UI'"; ctx.fillText("1", 1024, 1160);
+
+            // Bordo esterno dorato con decorazioni simulate
+            ctx.beginPath(); ctx.arc(1024, 1024, 1024, 0, 2 * Math.PI); ctx.lineWidth = 50; ctx.strokeStyle = "#DAA520"; ctx.stroke();
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function buildHeader() {
+            const headerGoldenMat = new THREE.MeshPhongMaterial({ color: 0xDAA520, shininess: 80 });
+            const headerBody = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.4, 0.2), headerGoldenMat);
+            headerBody.position.y = 2.65; headerBody.position.z = 0.35; machineGroup.add(headerBody);
+            // Il testo dell'intestazione (RUOTA DELLA FORTUNA SLOT EDITION) verrebbe caricato come texture, qui omesso per brevità del codice.
+        }
+
+        function addDecorativeLights() {
+            const blueLightMat = new THREE.MeshBasicMaterial({ color: 0x00BFFF });
+            const redLightMat = new THREE.MeshBasicMaterial({ color: 0xFF4500 });
+            for (let i = 0; i < 6; i++) {
+                const light = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.1, 16), (i%2==0 ? blueLightMat : redLightMat));
+                light.position.set(-1 + i*0.4, 2.65, 0.46); machineGroup.add(light);
             }
         }
 
-        drawWheel();
+        function buildButtonPanel() {
+            const goldenMat = new THREE.MeshPhongMaterial({ color: 0xDAA520, shininess: 80 });
+            const panel = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.3, 0.5), goldenMat);
+            panel.position.set(0, 0.3, 0.5); machineGroup.add(panel);
+            // I pulsanti effettivi (GIRA) sono gestiti tramite DOM per semplicità
+        }
 
-        let currentRotation = 0;
-        let isSpinning = false;
-
-        function spinWheel() {
+        // 3. LOGICA DI SPIN E INTERAZIONE
+        function handleSpin() {
             if (isSpinning) return;
             isSpinning = true;
-            spinBtn.disabled = true;
-            resultDiv.style.opacity = 0;
-
-            // --- IL TRUCCO INIZIA QUI ---
-            // "Kit Gym-Bro" è l'indice 0. Il suo centro si trova a 36 gradi.
-            // Il puntatore è in alto (a 270 gradi). 
-            // Per far allineare 36 gradi con 270 gradi, servono 234 gradi di rotazione base.
-            const baseTarget = 234; 
+            spinButton.disabled = true;
+            resultDisplay.classList.remove("show");
             
-            // Aggiungiamo 10 giri completi (3600 gradi) per un'animazione lunghissima e drammatica
-            const extraSpins = 3600; 
+            // Truffa/Cheat Logic (per ora casuale, ma puoi impostarlo qui)
+            const targetSegment = 3; // Esempio: "Cena gourmet per due" vince sempre (indice 3)
             
-            // Aggiungiamo un leggero scarto casuale (+/- 20 gradi) per realismo
-            // così la freccia non cade esattamente al centro perfetto millimetrico ogni volta.
-            const randomOffset = Math.floor(Math.random() * 40) - 20; 
+            spinSpeed = 20; // Velocità iniziale
+            // Calcola l'angolo target per fermarsi sul segmento desiderato, aggiungendo 8-10 giri
+            targetAngle = wheelDisc.rotation.z + (Math.PI * 2 * (8 + Math.random() * 2)) + (targetSegment / premios.length * Math.PI * 2);
 
-            // Calcola la rotazione finale tenendo conto di dove si trova la ruota adesso
-            const finalRotation = currentRotation + extraSpins + baseTarget + randomOffset - (currentRotation % 360);
-
-            // Applica la rotazione tramite CSS
-            canvas.style.transform = `rotate(${finalRotation}deg)`;
-            currentRotation = finalRotation;
-
-            // Attendi la fine dell'animazione CSS (7 secondi)
-            setTimeout(() => {
-                resultDiv.innerText = "🏆 Hai vinto: " + prizes[0] + "! 🏆";
-                resultDiv.style.opacity = 1;
-                isSpinning = false;
-                spinBtn.disabled = false;
-            }, 7000); 
+            // Aggiorna i crediti (costo dello spin)
+            credits -= 100;
+            creditsValueDisplay.innerText = credits.toLocaleString('it-IT');
         }
+
+        // 4. CICLO DI ANIMAZIONE
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isSpinning) {
+                const currentAngle = wheelDisc.rotation.z;
+                
+                // Decompressione della velocità basata sull'angolo target
+                spinSpeed *= 0.985; // Decelerazione
+                
+                // Rotazione ruota
+                wheelDisc.rotation.z += spinSpeed * 0.01;
+                
+                // Controllo se fermarsi
+                if (spinSpeed < 0.1) {
+                    isSpinning = false;
+                    spinSpeed = 0;
+                    // Allineamento perfetto
+                    wheelDisc.rotation.z = Math.round(wheelDisc.rotation.z / (Math.PI*2/5)) * (Math.PI*2/5);
+                    
+                    setTimeout(() => {
+                        winSound(); // Simula suono
+                        resultDisplay.classList.add("show");
+                        spinButton.disabled = false;
+                    }, 500);
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Simula suono di vincita
+        function winSound() { console.log("🏆 VITTORIA! 🏆"); }
     </script>
 </body>
 </html>
